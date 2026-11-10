@@ -228,12 +228,14 @@ module fir_core #(
                         new_sample_reg <= sample_in;
                         // Clear accumulator for new computation
                         acc_clear      <= 1'b1;
+                        // Write the sample now so it is in the buffer before tap 0 is read
+                        sample_we      <= 1'b1;
                     end
                 end
                 
                 STORE: begin
-                    // Write new sample to circular buffer
-                    sample_we   <= 1'b1;
+                    // Start MACs now: mac_en_d1 then lines up with coeff[0] / sample[n]
+                    mac_en      <= 1'b1;
                     // Setup for first MAC computation
                     tap_counter <= 0;
                     coeff_raddr <= 0;
