@@ -1,0 +1,35 @@
+
+PPA SUMMARY
+Run          | Design   | Area  | Seq% | Cells | Period(ns) | Setup WNS(ns) | Hold | Fmax(MHz) | Power(uW) 
+-------------+----------+-------+------+-------+------------+---------------+------+-----------+-----------
+fir_dc       | fir_core | 33839 | 45.6 | 11637 | 30.00      | -1.07         | 0.86 | 32.2      | 69.00 (DC)
+fir_pt       | fir_core | -     | -    | -     | 30.00      | -1.07         | MET  | 32.2      | 44.48 (PT)
+async_fifo   | fifo     | 1992  | 60.3 | 545   | -          | -             | -    | -         | 73.55 (DC)
+regfile_cmem | reg_file | 10935 | 66.6 | 2983  | -          | -             | -    | -         | -         
+
+DETAILS
+
+[fir_dc]  dir=[;']/lab9/reports  tool=U-2022.12-SP7
+  reports parsed: fir_core_area.rpt(area), fir_core_power_est.rpt(power-dc), fir_core_timing.rpt(setup), fir_core_timing_min.rpt(hold)
+  critical path : u_sample_buf/rdata_reg[1] -> u_fir_alu/accumulator_reg[31]
+  top area      : u_coeff_mem 40.0%, u_sample_buf 40.0%, u_fir_alu 17.2%
+  top power     : u_coeff_mem 35.5%, u_sample_buf 30.5%, u_fir_alu 29.5%
+  ** SETUP VIOLATED: worst slack -1.07 ns on u_sample_buf/rdata_reg[1] -> u_fir_alu/accumulator_reg[31] (4 path(s) reported failing)
+
+[fir_pt]  dir=[;']/lab9/reports_pt  tool=U-2022.12-SP5
+  reports parsed: fir_core_hold_timing.rpt(hold), fir_core_power_by_cell.rpt(power-pt), fir_core_power_by_net.rpt(power-pt), fir_core_power_hierarchy.rpt(power-pt), fir_core_power_total.rpt(power-pt), fir_core_power_verbose.rpt(power-pt), fir_core_setup_timing.rpt(setup), fir_core_timing_detailed.rpt(setup), fir_core_timing_summary.rpt(setup)
+  critical path : u_sample_buf/rdata_reg[1] -> u_fir_alu/accumulator_reg[31]
+  ** SETUP VIOLATED: worst slack -1.07 ns on u_sample_buf/rdata_reg[1] -> u_fir_alu/accumulator_reg[31] (4 path(s) reported failing)
+  ** no area report found
+
+[async_fifo]  dir=advanced logic/kl3755_lab8/reports  tool=U-2022.12-SP7
+  reports parsed: area.rpt(area), power.rpt(power-dc), pt_power.rpt(power-pt), timing.rpt(setup)
+  ** 1 reported path(s) are UNCONSTRAINED (missing clock or I/O delay constraints?)
+
+[regfile_cmem]  dir=advanced logic/kl3755_lab_7  tool=U-2022.12-SP7
+  reports parsed: dc_area.rpt(area), dc_timing.rpt(setup)
+  ** 1 reported path(s) are UNCONSTRAINED (missing clock or I/O delay constraints?)
+  ** no power report found
+
+Wrote perl_tools/examples/ppa_summary.csv
+Wrote perl_tools/examples/ppa_summary.md

@@ -1,0 +1,5 @@
+label,design,dir,area_total,area_comb,area_seq,cells,seq_cells,period,setup_slack,violating,hold_slack,fmax_mhz,power_uw,power_src,crit_start,crit_end,flags
+fir_dc,fir_core,[;']/lab9/reports,33839.000000,18424.000000,15415.000000,11637,2175,30.00,-1.07,4,0.86,32.1853878339234,69.0027,DC,u_sample_buf/rdata_reg[1],u_fir_alu/accumulator_reg[31],"SETUP VIOLATED: worst slack -1.07 ns on u_sample_buf/rdata_reg[1] -> u_fir_alu/accumulator_reg[31] (4 path(s) reported failing)"
+fir_pt,fir_core,[;']/lab9/reports_pt,,,,,,30.00,-1.07,4,MET,32.1853878339234,44.48,PT,u_sample_buf/rdata_reg[1],u_fir_alu/accumulator_reg[31],"SETUP VIOLATED: worst slack -1.07 ns on u_sample_buf/rdata_reg[1] -> u_fir_alu/accumulator_reg[31] (4 path(s) reported failing); no area report found"
+async_fifo,fifo,advanced logic/kl3755_lab8/reports,1992.000000,791.000000,1201.000000,545,162,,,0,,,73.548,DC,,,"1 reported path(s) are UNCONSTRAINED (missing clock or I/O delay constraints?)"
+regfile_cmem,reg_file,advanced logic/kl3755_lab_7,10935.000000,3655.000000,7280.000000,2983,1040,,,0,,,,,,,"1 reported path(s) are UNCONSTRAINED (missing clock or I/O delay constraints?); no power report found"

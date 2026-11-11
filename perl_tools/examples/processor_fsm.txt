@@ -1,0 +1,64 @@
+VCD          : advanced logic/inhw_4/dump.vcd  (timescale 1s)
+Clock / state: proc_tb_minimal.uut.Clock / proc_tb_minimal.uut.current_state
+Cycles       : 48 total, 46 after reset (first live cycle 2 at t=25)
+
+STATE TRANSITIONS (row = from, col = to)
+from\to     IDLE   FETCH  DECODE   LOAD1   MOVE1    ALU1    ALU2    ALU3
+IDLE           .       7       .       .       .       .       .       .
+FETCH          .       .       7       .       .       .       .       .
+DECODE         .       .       .       3       1       3       .       .
+LOAD1          3       .       .       .       .       .       .       .
+MOVE1          1       .       .       .       .       .       .       .
+ALU1           .       .       .       .       .       .       3       .
+ALU2           .       .       .       .       .       .       .       3
+ALU3           3       .       .       .       .       .       .       .
+
+DWELL TIME PER VISIT (cycles)
+  state     visits     min     avg     max     total
+  IDLE           8       1     2.4       6     41.3%
+  FETCH          7       1     1.0       1     15.2%
+  DECODE         7       1     1.0       1     15.2%
+  LOAD1          3       1     1.0       1      6.5%
+  MOVE1          1       1     1.0       1      2.2%
+  ALU1           3       1     1.0       1      6.5%
+  ALU2           3       1     1.0       1      6.5%
+  ALU3           3       1     1.0       1      6.5%
+
+LATENCY FETCH -> IDLE (cycles from entering FETCH to entering IDLE)
+  7 transactions: min 3, avg 3.86, max 5
+  histogram: 3 cyc x4, 5 cyc x3
+
+CHECKS
+  X/Z on state after reset : none
+  illegal transitions      : none
+  allowed but never taken  : none (all arcs covered)
+  states never visited     : none
+
+CYCLE TRACE 0..25 (values sampled just before each rising edge)
+  cycle  time  state   Done  BusWires
+  0      5     IDLE    0     z       
+  1      15    IDLE    0     z       
+  2      25    IDLE    0     z       
+> 3      35    FETCH   0     z       
+> 4      45    DECODE  0     z       
+> 5      55    LOAD1   1     10      
+> 6      65    IDLE    0     z       
+  7      75    IDLE    0     z       
+> 8      85    FETCH   0     z       
+> 9      95    DECODE  0     z       
+> 10     105   LOAD1   1     5       
+> 11     115   IDLE    0     z       
+  12     125   IDLE    0     z       
+> 13     135   FETCH   0     z       
+> 14     145   DECODE  0     z       
+> 15     155   MOVE1   1     10      
+> 16     165   IDLE    0     z       
+  17     175   IDLE    0     z       
+> 18     185   FETCH   0     z       
+> 19     195   DECODE  0     z       
+> 20     205   ALU1    0     10      
+> 21     215   ALU2    0     5       
+> 22     225   ALU3    1     15      
+> 23     235   IDLE    0     z       
+  24     245   IDLE    0     z       
+> 25     255   FETCH   0     z       

@@ -1,0 +1,43 @@
+VCD          : [;']/lab9/sim/fir_core.vcd  (timescale 1ps)
+Clock / state: tb_fir_core.dut.clk / tb_fir_core.dut.state
+Cycles       : 14082 total, 14077 after reset (first live cycle 5 at t=55000)
+
+STATE TRANSITIONS (row = from, col = to)
+from\to     IDLE   STORE COMPUTE  OUTPUT
+IDLE           .     200       .       .
+STORE          .       .     200       .
+COMPUTE        .       .       .     200
+OUTPUT       200       .       .       .
+
+DWELL TIME PER VISIT (cycles)
+  state     visits     min     avg     max     total
+  IDLE         201       3     3.4      69      4.8%
+  STORE        200       1     1.0       1      1.4%
+  COMPUTE      200      65    65.0      65     92.3%
+  OUTPUT       200       1     1.0       1      1.4%
+
+LATENCY STORE -> OUTPUT (cycles from entering STORE to entering OUTPUT)
+  200 transactions: min 66, avg 66.00, max 66
+  histogram: 66 cyc x200
+
+CHECKS
+  X/Z on state after reset : none
+  illegal transitions      : none
+  allowed but never taken  : none (all arcs covered)
+  states never visited     : none
+
+CYCLE TRACE 136..146 (values sampled just before each rising edge)
+  cycle  time     state    sample_valid  tap_counter  mac_en  acc_clear  sample_we  write_ptr  output_valid
+  136    1365000  COMPUTE  0             61           1       0          0          0          0           
+  137    1375000  COMPUTE  0             62           1       0          0          0          0           
+  138    1385000  COMPUTE  0             63           1       0          0          0          0           
+  139    1395000  COMPUTE  0             0            1       0          0          0          0           
+> 140    1405000  OUTPUT   0             1            1       0          0          0          0           
+> 141    1415000  IDLE     0             1            0       0          0          1          1           
+  142    1425000  IDLE     0             0            0       0          0          1          0           
+  143    1435000  IDLE     1             0            0       0          0          1          0           
+> 144    1445000  STORE    0             0            0       1          0          1          0           
+> 145    1455000  COMPUTE  0             0            0       0          1          1          0           
+  146    1465000  COMPUTE  0             1            1       0          0          1          0           
+
+Wrote perl_tools/examples/fir_core_cycles.csv (14082 cycles)
