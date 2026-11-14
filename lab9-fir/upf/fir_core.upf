@@ -1,0 +1,71 @@
+# ===========================================================================
+# Power intent for fir_core (IEEE 1801 / UPF 2.1)
+# ===========================================================================
+# Author: Kevin Liu
+# UNI: kl3755
+# ===========================================================================
+# Two domains:
+#   PD_TOP  always on: FSM, coefficient memory, sample buffer, clock gate,
+#           power controller (u_pmu).
+#   PD_MAC  switchable: the pipelined MAC datapath (u_fir_alu).
+#
+# u_pmu drives the switch (pwr_on) and the isolation enable (iso_en):
+#   wake : pwr_on=1, wait 4 cycles, then iso_en=0
+#   sleep: iso_en=1, then pwr_on=0 on the next cycle
+# PD_MAC outputs (acc_out, acc_en) clamp to 0 while isolated. No retention:
+# the accumulator is cleared at the start of every sample.
+# The SVA checker (sva/fir_core_sva.sv, section 8) checks this sequencing.
+# ===========================================================================
+
+upf_version 2.1
+set_scope .
+
+# ---------------------------------------------------------------- domains
+create_power_domain PD_TOP -include_scope
+create_power_domain PD_MAC -elements {u_fir_alu}
+
+# ---------------------------------------------------------------- supplies
+create_supply_port VDD
+create_supply_port VSS
+
+create_supply_net VDD     -domain PD_TOP
+create_supply_net VSS     -domain PD_TOP
+create_supply_net VDD_MAC -domain PD_MAC
+create_supply_net VSS     -domain PD_MAC -reuse
+
+connect_supply_net VDD -ports VDD
+connect_supply_net VSS -ports VSS
+
+set_domain_supply_net PD_TOP -primary_power_net VDD     -primary_ground_net VSS
+set_domain_supply_net PD_MAC -primary_power_net VDD_MAC -primary_ground_net VSS
+
+# ---------------------------------------------------------------- power switch
+create_power_switch SW_MAC \
+    -domain               PD_MAC \
+    -input_supply_port    {vin  VDD} \
+    -output_supply_port   {vout VDD_MAC} \
+    -control_port         {ctrl u_pmu/pwr_on} \
+    -on_state             {MAC_ON  vin {ctrl}} \
+    -off_state            {MAC_OFF {!ctrl}}
+
+# ---------------------------------------------------------------- isolation
+set_isolation ISO_MAC \
+    -domain               PD_MAC \
+    -applies_to           outputs \
+    -clamp_value          0 \
+    -isolation_power_net  VDD \
+    -isolation_ground_net VSS
+
+set_isolation_control ISO_MAC \
+    -domain               PD_MAC \
+    -isolation_signal     u_pmu/iso_en \
+    -isolation_sense      high \
+    -location             parent
+
+# ---------------------------------------------------------------- power states
+add_port_state VDD         -state {ON 1.0}
+add_port_state SW_MAC/vout -state {ON 1.0} -state {OFF off}
+
+create_pst fir_pst -supplies {VDD SW_MAC/vout}
+add_pst_state RUN     -pst fir_pst -state {ON ON}
+add_pst_state MAC_OFF -pst fir_pst -state {ON OFF}

@@ -71,8 +71,22 @@ module tb_fir_core_sva;
         coeff_we = 1'b0;
     endtask
 
+    // Every tap set to the same value (directed corner cases).
+    task automatic load_coeffs_const(logic [DATA_WIDTH-1:0] value);
+        sample_valid = 1'b0;
+        @(negedge clk);
+        while (busy) @(negedge clk);
+        for (int i = 0; i < NUM_TAPS; i++) begin
+            coeff_addr = ADDR_WIDTH'(i);
+            coeff_data = value;
+            coeff_we   = 1'b1;
+            @(negedge clk);
+        end
+        coeff_we = 1'b0;
+    endtask
+
     // Send `count` samples. mode 0: zeros, 1: impulse then zeros,
-    // 2: random data. valid_pct sets how often sample_valid is offered;
+    // 2: random data, 3: full-scale positive (16'h7FFF). valid_pct sets how often sample_valid is offered;
     // 100 keeps valid high so samples go in back to back.
     task automatic send(int count, int mode, int valid_pct);
         int target = accepted() + count;
@@ -82,6 +96,7 @@ module tb_fir_core_sva;
             case (mode)
                 0: sample_in = '0;
                 1: sample_in = (accepted() == first) ? 16'h4000 : 16'h0000;
+                3: sample_in = 16'h7FFF;
                 default: sample_in = DATA_WIDTH'($random(seed));
             endcase
             @(negedge clk);
@@ -120,6 +135,13 @@ module tb_fir_core_sva;
         load_coeffs(1);
         send(200, 2, 100);
 
+        // Phase 3b: directed overflow. Full-scale taps and samples push the
+        // Q2.30 sum past +1.0, so the Q1.15 slice wraps (acc[31] != acc[30]).
+        // The random phases reach this only by chance.
+        drain();
+        load_coeffs_const(16'h7FFF);
+        send(NUM_TAPS + 4, 3, 100);
+
         // Phase 4: reset in the middle of the run, then keep going.
         do_reset(3);
         load_coeffs(0);
@@ -134,6 +156,10 @@ module tb_fir_core_sva;
             $fatal(1, "cover: never produced a negative output");
         if (!dut.u_fir_core_sva.cov_acc_overflow)
             $fatal(1, "cover: accumulator never overflowed the Q1.15 slice");
+        if (!dut.u_fir_core_sva.cov_pd_off)
+            $fatal(1, "cover: MAC power domain was never shut down");
+        if (!dut.u_fir_core_sva.cov_wake_accept)
+            $fatal(1, "cover: no sample accepted while PD_MAC was off");
         if (dut.u_fir_core_sva.n_checked < 300)
             $fatal(1, "golden model compared only %0d outputs", dut.u_fir_core_sva.n_checked);
 

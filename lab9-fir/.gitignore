@@ -4,3 +4,12 @@ csrc/
 *.vpd
 ucli.key
 *.log
+sim/
+reports/
+reports_pt/
+netlist/
+synth/*.log
+pt/*.log
+synth/command.log
+synth/default.svf
+pt/pt_shell_command.log

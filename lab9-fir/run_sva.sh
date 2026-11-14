@@ -15,6 +15,8 @@ SRCS=(
     "${ROOT}/rtl/fir_alu.v"
     "${ROOT}/rtl/cmem.v"
     "${ROOT}/rtl/reg_file.v"
+    "${ROOT}/rtl/fir_icg.v"
+    "${ROOT}/rtl/fir_pmu.v"
     "${ROOT}/sva/fir_core_sva.sv"
     "${ROOT}/sva/tb_fir_core_sva.sv"
 )

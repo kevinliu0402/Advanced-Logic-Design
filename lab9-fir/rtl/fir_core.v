@@ -1,5 +1,6 @@
 // ============================================================================
-// FIR Filter Core - Top Level Module (Optimized with Circular Buffer)
+// FIR Filter Core - Top Level Module (Circular Buffer, Pipelined MAC,
+// Clock-Gated ALU, Switchable MAC Power Domain)
 // ============================================================================
 // Author: Kevin Liu
 // UNI: kl3755
@@ -10,6 +11,8 @@
 //   - FIR ALU (Lab 6): MAC operations
 //   - Coefficient Memory (Lab 7): Stores filter coefficients  
 //   - Sample Register File (Lab 7): Circular buffer for delayed samples
+//   - fir_icg: clock gate for the ALU, enabled only while a MAC is in flight
+//   - fir_pmu: power controller for PD_MAC (the ALU), see fir_core.upf
 // ============================================================================
 
 `timescale 1ns/1ps
@@ -53,6 +56,9 @@ module fir_core #(
     localparam OUTPUT    = 2'd3;
     
     reg [1:0] state, next_state;
+
+    // NUM_TAPS == 2**ADDR_WIDTH, so the last tap index is all ones.
+    localparam [ADDR_WIDTH-1:0] LAST_TAP = {ADDR_WIDTH{1'b1}};
     
     // Circular buffer write pointer (points to oldest sample location)
     reg [ADDR_WIDTH-1:0] write_ptr;
@@ -73,7 +79,21 @@ module fir_core #(
     // Data paths
     wire [DATA_WIDTH-1:0] sample_data_out;
     wire [DATA_WIDTH-1:0] coeff_data_out;
+    // Only acc_out[30:15] (Q2.30 -> Q1.15) is used; the rest is dropped on purpose.
+    /* verilator lint_off UNUSEDSIGNAL */
     wire [ACC_WIDTH-1:0]  acc_out;
+    /* verilator lint_on UNUSEDSIGNAL */
+    wire                  acc_en;
+
+    // Clock gating and power control
+    wire                  alu_gclk;
+    wire                  alu_clk_en;
+    wire                  mac_pwr_ready;
+    // Read by the UPF power switch and isolation strategy, not by RTL logic.
+    /* verilator lint_off UNUSEDSIGNAL */
+    wire                  mac_pwr_on;
+    wire                  mac_iso_en;
+    /* verilator lint_on UNUSEDSIGNAL */
     
     // Output register
     reg [DATA_WIDTH-1:0]  output_reg;
@@ -82,16 +102,16 @@ module fir_core #(
     // Pipeline registers for memory latency
     reg                   mac_en_d1;
     reg [ADDR_WIDTH-1:0]  tap_counter_d1;
+    reg [ADDR_WIDTH-1:0]  tap_counter_d2;   // matches the extra MAC pipeline stage
     
     // ========================================================================
     // Circular Buffer Address Calculation
     // ========================================================================
     // sample[0] (newest) is at write_ptr
     // sample[n] (older) is at (write_ptr - n) mod NUM_TAPS
-    
-    assign sample_raddr = (write_ptr >= tap_counter) ? 
-                          (write_ptr - tap_counter) : 
-                          (NUM_TAPS + write_ptr - tap_counter);
+    // NUM_TAPS == 2**ADDR_WIDTH, so ADDR_WIDTH-bit subtraction wraps correctly.
+
+    assign sample_raddr = write_ptr - tap_counter;
     
     // ========================================================================
     // Coefficient Memory Instance (from Lab 7)
@@ -131,14 +151,43 @@ module fir_core #(
     // FIR ALU Instance (from Lab 6)
     // ========================================================================
     
+    // The ALU (PD_MAC) gets a gated clock: it only toggles while a clear,
+    // a stage-1 multiply, or a stage-2 accumulate is pending.
+    assign alu_clk_en = acc_clear | mac_en_d1 | acc_en;
+
+    fir_icg u_alu_icg (
+        .clk     (clk),
+        .en      (alu_clk_en),
+        .test_en (1'b0),
+        .gclk    (alu_gclk)
+    );
+
     fir_alu u_fir_alu (
-        .clk         (clk),
+        .clk         (alu_gclk),
         .rstn        (rstn),
         .sample_data (sample_data_out),
         .coeff_data  (coeff_data_out),
         .mac_en      (mac_en_d1),
         .acc_clear   (acc_clear),
-        .acc_out     (acc_out)
+        .acc_out     (acc_out),
+        .acc_en      (acc_en)
+    );
+
+    // ========================================================================
+    // Power controller for PD_MAC (always-on domain)
+    // ========================================================================
+    // PD_MAC is requested while the core is busy or a sample is offered, and
+    // switched off after an idle timeout. The interface does not change: a
+    // sample is still accepted in IDLE, and the core holds in STORE until
+    // PD_MAC is ready.
+
+    fir_pmu u_pmu (
+        .clk       (clk),
+        .rstn      (rstn),
+        .req       (sample_valid | (state != IDLE)),
+        .pwr_on    (mac_pwr_on),
+        .iso_en    (mac_iso_en),
+        .pwr_ready (mac_pwr_ready)
     );
     
     // ========================================================================
@@ -149,10 +198,12 @@ module fir_core #(
         if (!rstn) begin
             mac_en_d1      <= 1'b0;
             tap_counter_d1 <= 0;
+            tap_counter_d2 <= 0;
         end
         else begin
             mac_en_d1      <= mac_en;
             tap_counter_d1 <= tap_counter;
+            tap_counter_d2 <= tap_counter_d1;
         end
     end
     
@@ -178,14 +229,16 @@ module fir_core #(
                 if (sample_valid)
                     next_state = STORE;
             end
-            
+
+            // STORE also waits here while PD_MAC wakes up.
             STORE: begin
-                next_state = COMPUTE;
+                if (mac_pwr_ready)
+                    next_state = COMPUTE;
             end
             
             COMPUTE: begin
-                // Wait for all 64 MACs + pipeline delay
-                if (tap_counter_d1 == NUM_TAPS - 1)
+                // Wait for all 64 MACs + memory and MAC pipeline delay
+                if (tap_counter_d2 == LAST_TAP)
                     next_state = OUTPUT;
             end
             
@@ -226,28 +279,31 @@ module fir_core #(
                     if (sample_valid) begin
                         // Capture new sample
                         new_sample_reg <= sample_in;
-                        // Clear accumulator for new computation
-                        acc_clear      <= 1'b1;
                         // Write the sample now so it is in the buffer before tap 0 is read
                         sample_we      <= 1'b1;
                     end
                 end
-                
+
                 STORE: begin
-                    // Start MACs now: mac_en_d1 then lines up with coeff[0] / sample[n]
-                    mac_en      <= 1'b1;
-                    // Setup for first MAC computation
+                    // The sample buffer and coefficients are always on, so the
+                    // sample is already stored. The MAC start waits for PD_MAC.
                     tap_counter <= 0;
                     coeff_raddr <= 0;
+                    if (mac_pwr_ready) begin
+                        // Clear the accumulator for the new computation; it
+                        // lands two cycles before the first accumulate.
+                        acc_clear <= 1'b1;
+                        // Start MACs now: mac_en_d1 then lines up with coeff[0] / sample[n]
+                        mac_en    <= 1'b1;
+                    end
                 end
                 
                 COMPUTE: begin
                     // Perform MAC operations for all taps
-                    if (tap_counter < NUM_TAPS) begin
-                        mac_en      <= 1'b1;
-                        coeff_raddr <= tap_counter + 1;
-                        tap_counter <= tap_counter + 1;
-                    end
+                    // (a 6-bit tap_counter is always < NUM_TAPS, so no range check)
+                    mac_en      <= 1'b1;
+                    coeff_raddr <= tap_counter + 1'b1;
+                    tap_counter <= tap_counter + 1'b1;
                 end
                 
                 OUTPUT: begin
@@ -256,7 +312,7 @@ module fir_core #(
                     output_reg       <= acc_out[30:15];
                     output_valid_reg <= 1'b1;
                     // Update write pointer for next sample (circular buffer)
-                    write_ptr        <= (write_ptr == NUM_TAPS - 1) ? 0 : write_ptr + 1;
+                    write_ptr        <= (write_ptr == LAST_TAP) ? {ADDR_WIDTH{1'b0}} : write_ptr + 1'b1;
                 end
             endcase
         end

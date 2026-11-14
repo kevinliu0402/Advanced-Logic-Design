@@ -16,7 +16,10 @@
 //   4. Circular buffer: write pointer advance/wrap, read-address arithmetic.
 //   5. Latency: an output for every accepted sample, exactly LATENCY cycles later.
 //   6. End-to-end: a golden FIR model compares filter_out on every output.
-//   7. Covers for back-to-back samples, pointer wrap, negative output, overflow.
+//   7. Covers for back-to-back samples, pointer wrap, negative output, overflow,
+//      MAC power-domain shutdown, and a sample accepted after a wake-up.
+//   8. Low power: PD_MAC switch/isolation sequencing, no MAC activity while
+//      PD_MAC is not ready, and the ALU clock gate covering every ALU update.
 
 `timescale 1ns/1ps
 
@@ -44,26 +47,44 @@ module fir_core_sva #(
     input        [ADDR_WIDTH-1:0] tap_counter,
     input        [ADDR_WIDTH-1:0] sample_raddr,
     input                         sample_we,
-    input                         mac_en_d1,
+    input                         mac_en_d1,   // stage-1 (multiply) enable
+    input                         acc_en,      // stage-2 (accumulate) enable
     input                         acc_clear,
-    input        [ACC_WIDTH-1:0]  acc_out
+    input        [ACC_WIDTH-1:0]  acc_out,
+    // clock gating and power control
+    input                         alu_clk_en,
+    input                         mac_pwr_on,
+    input                         mac_iso_en,
+    input                         mac_pwr_ready
 );
     // Same encoding as fir_core.
     localparam [1:0] IDLE = 2'd0, STORE = 2'd1, COMPUTE = 2'd2, OUTPUT = 2'd3;
 
     // Cycles spent in COMPUTE per sample. tap_counter walks 0..63, and the
-    // exit test looks at the one-cycle-delayed copy, so it is NUM_TAPS + 1.
-    localparam int COMPUTE_CYCLES = NUM_TAPS + 1;
-    // Accept (IDLE) -> STORE -> COMPUTE x N -> OUTPUT -> output_valid.
-    localparam int LATENCY = 1 + 1 + COMPUTE_CYCLES + 1;
+    // exit test looks at the two-cycle-delayed copy (one cycle for the memory
+    // read, one for the pipelined multiply), so it is NUM_TAPS + 2.
+    localparam int COMPUTE_CYCLES = NUM_TAPS + 2;
+    // PD_MAC wake-up: switch on, then isolation released this many cycles later.
+    localparam int WAKE_CYCLES = 4;
+    // Accept (IDLE) -> STORE -> COMPUTE x N -> OUTPUT -> output_valid, when
+    // PD_MAC is already on. STORE stretches while PD_MAC wakes up, so the
+    // fixed latency is measured from the MAC start (last STORE cycle).
+    localparam int LATENCY       = 1 + 1 + COMPUTE_CYCLES + 1;
+    localparam int START_TO_OUT  = 1 + COMPUTE_CYCLES + 1;
+    // Longest STORE stall: wake request, WAKE_CYCLES, isolation release.
+    localparam int MAX_STORE     = WAKE_CYCLES + 3;
 
     bit cov_back_to_back;
     bit cov_ptr_wrap;
     bit cov_negative_out;
     bit cov_acc_overflow;
+    bit cov_pd_off;
+    bit cov_wake_accept;
     int n_checked;   // outputs compared against the golden model
 
     wire accept = sample_valid && sample_ready;
+    // MAC start: the STORE cycle in which PD_MAC is ready.
+    wire start  = (state == STORE) && mac_pwr_ready;
 
     // -----------------------------------------------------------------------
     // 1. Interface rules. The golden model below assumes coefficients do not
@@ -96,17 +117,39 @@ module fir_core_sva #(
 
     a_idle_accept: assert property (
         @(posedge clk) disable iff (!rstn)
-        (state == IDLE && sample_valid) |=> state == STORE
-    ) else $error("valid sample in IDLE did not move to STORE");
+        (state == IDLE && accept) |=> state == STORE
+    ) else $error("accepted sample in IDLE did not move to STORE");
 
     a_idle_wait: assert property (
         @(posedge clk) disable iff (!rstn)
-        (state == IDLE && !sample_valid) |=> state == IDLE
-    ) else $error("left IDLE without a valid sample");
+        (state == IDLE && !accept) |=> state == IDLE
+    ) else $error("left IDLE without an accepted sample");
 
     a_store_to_compute: assert property (
-        @(posedge clk) disable iff (!rstn) state == STORE |=> state == COMPUTE
-    ) else $error("STORE did not go to COMPUTE");
+        @(posedge clk) disable iff (!rstn) start |=> state == COMPUTE
+    ) else $error("STORE did not go to COMPUTE once PD_MAC was ready");
+
+    a_store_waits: assert property (
+        @(posedge clk) disable iff (!rstn)
+        (state == STORE && !mac_pwr_ready) |=> state == STORE
+    ) else $error("left STORE before PD_MAC was ready");
+
+    // With PD_MAC already on, STORE lasts exactly one cycle (no stall).
+    a_no_stall_when_on: assert property (
+        @(posedge clk) disable iff (!rstn) (accept && mac_pwr_ready) |=> start
+    ) else $error("STORE stalled although PD_MAC was on");
+
+    // The wake-up stall is bounded.
+    int store_run;
+    always @(posedge clk or negedge rstn) begin
+        if (!rstn)                 store_run <= 0;
+        else if (state == STORE)   store_run <= store_run + 1;
+        else                       store_run <= 0;
+    end
+
+    a_store_bounded: assert property (
+        @(posedge clk) disable iff (!rstn) state == STORE |-> store_run < MAX_STORE
+    ) else $error("STORE waited %0d cycles for PD_MAC", store_run);
 
     a_compute_next: assert property (
         @(posedge clk) disable iff (!rstn)
@@ -160,10 +203,10 @@ module fir_core_sva #(
     ) else $error("sample written %0d times for one input", we_count);
 
     // The accumulator is cleared when the sample is accepted.
-    a_acc_clear_on_accept: assert property (
+    a_acc_clear_on_start: assert property (
         @(posedge clk) disable iff (!rstn)
-        $past(rstn) |-> acc_clear == $past(accept)
-    ) else $error("acc_clear does not follow sample acceptance");
+        $past(rstn) |-> acc_clear == $past(start)
+    ) else $error("acc_clear does not follow the MAC start");
 
     a_acc_zero_after_clear: assert property (
         @(posedge clk) disable iff (!rstn) acc_clear |=> acc_out == '0
@@ -175,7 +218,7 @@ module fir_core_sva #(
     always @(posedge clk or negedge rstn) begin
         if (!rstn)          mac_count <= 0;
         else if (acc_clear) mac_count <= 0;
-        else if (mac_en_d1) mac_count <= mac_count + 1;
+        else if (acc_en)    mac_count <= mac_count + 1;
     end
 
     a_mac_count: assert property (
@@ -186,7 +229,7 @@ module fir_core_sva #(
     // The accumulator only moves on a clear or an enabled MAC.
     a_acc_holds: assert property (
         @(posedge clk) disable iff (!rstn)
-        (!acc_clear && !mac_en_d1) |=> $stable(acc_out)
+        (!acc_clear && !acc_en) |=> $stable(acc_out)
     ) else $error("accumulator changed with no clear and no MAC");
 
     // -----------------------------------------------------------------------
@@ -233,8 +276,15 @@ module fir_core_sva #(
 
     a_latency: assert property (
         @(posedge clk) disable iff (!rstn)
-        since_reset >= LATENCY |-> output_valid == $past(accept, LATENCY)
-    ) else $error("output_valid is not accept delayed by %0d cycles", LATENCY);
+        since_reset >= START_TO_OUT |-> output_valid == $past(start, START_TO_OUT)
+    ) else $error("output_valid is not the MAC start delayed by %0d cycles", START_TO_OUT);
+
+    // End to end, with PD_MAC on: an accepted sample produces its output
+    // exactly LATENCY cycles later.
+    a_latency_when_on: assert property (
+        @(posedge clk) disable iff (!rstn)
+        (since_reset >= LATENCY && $past(accept && mac_pwr_ready, LATENCY)) |-> output_valid
+    ) else $error("output not %0d cycles after a sample accepted with PD_MAC on", LATENCY);
 
     a_output_pulse: assert property (
         @(posedge clk) disable iff (!rstn) output_valid |=> !output_valid
@@ -303,6 +353,50 @@ module fir_core_sva #(
     end
 
     // -----------------------------------------------------------------------
+    // 8. Low power
+    // -----------------------------------------------------------------------
+    // PD_MAC is isolated whenever its switch is off.
+    a_off_is_isolated: assert property (
+        @(posedge clk) disable iff (!rstn) !mac_pwr_on |-> mac_iso_en
+    ) else $error("PD_MAC switched off without isolation");
+
+    // Isolation goes on at least one cycle before the switch turns off.
+    a_iso_before_off: assert property (
+        @(posedge clk) disable iff (!rstn) $fell(mac_pwr_on) |-> $past(mac_iso_en)
+    ) else $error("PD_MAC switched off in the same cycle isolation was enabled");
+
+    // Isolation is released only after the switch has been on for the full
+    // wake-up time.
+    a_wake_time: assert property (
+        @(posedge clk) disable iff (!rstn)
+        $fell(mac_iso_en) |-> ($past(mac_pwr_on, 1) && $past(mac_pwr_on, WAKE_CYCLES))
+    ) else $error("isolation released before PD_MAC finished waking up");
+
+    a_ready_means_on: assert property (
+        @(posedge clk) disable iff (!rstn)
+        mac_pwr_ready |-> (mac_pwr_on && !mac_iso_en)
+    ) else $error("pwr_ready while PD_MAC is off or isolated");
+
+    // No MAC activity unless PD_MAC is powered and de-isolated.
+    a_no_mac_when_off: assert property (
+        @(posedge clk) disable iff (!rstn)
+        (acc_clear || mac_en_d1 || acc_en) |-> mac_pwr_ready
+    ) else $error("ALU used while PD_MAC was not ready");
+
+    // PD_MAC is never shut down while a sample is in flight.
+    // Once the MACs have started, PD_MAC stays on until the output.
+    a_on_while_busy: assert property (
+        @(posedge clk) disable iff (!rstn)
+        (state == COMPUTE || state == OUTPUT) |-> mac_pwr_ready
+    ) else $error("PD_MAC not ready while the core is computing");
+
+    // Clock gating: the ALU only changes on edges where its clock was enabled.
+    a_cg_covers_alu: assert property (
+        @(posedge clk) disable iff (!rstn)
+        $changed(acc_out) |-> $past(alu_clk_en)
+    ) else $error("accumulator changed on a gated-off clock edge");
+
+    // -----------------------------------------------------------------------
     // 7. Covers
     //
     // Each condition is a named wire, used twice: by a `cover property`
@@ -313,9 +407,11 @@ module fir_core_sva #(
     // -----------------------------------------------------------------------
     logic [1:0]            prev_state;
     logic [ADDR_WIDTH-1:0] prev_wptr;
+    logic                  prev_pwr_on;
     always @(posedge clk) begin
-        prev_state <= state;
-        prev_wptr  <= write_ptr;
+        prev_state     <= state;
+        prev_wptr      <= write_ptr;
+        prev_pwr_on    <= mac_pwr_on;
     end
 
     // A new sample accepted on the first IDLE cycle after an output.
@@ -326,11 +422,17 @@ module fir_core_sva #(
     // result wraps. The RTL does not saturate; this shows the stimulus
     // reached that corner (the golden model wraps the same way).
     wire cond_acc_overflow = (state == OUTPUT) && (acc_out[31] != acc_out[30]);
+    // PD_MAC went through a full shutdown, and a sample was accepted while it
+    // was off (so STORE had to wait for the wake-up).
+    wire cond_pd_off       = prev_pwr_on && !mac_pwr_on;
+    wire cond_wake_accept  = accept && !mac_pwr_on;
 
     c_back_to_back: cover property (@(posedge clk) disable iff (!rstn) cond_back_to_back);
     c_ptr_wrap:     cover property (@(posedge clk) disable iff (!rstn) cond_ptr_wrap);
     c_negative_out: cover property (@(posedge clk) disable iff (!rstn) cond_negative_out);
     c_acc_overflow: cover property (@(posedge clk) disable iff (!rstn) cond_acc_overflow);
+    c_pd_off:       cover property (@(posedge clk) disable iff (!rstn) cond_pd_off);
+    c_wake_accept:  cover property (@(posedge clk) disable iff (!rstn) cond_wake_accept);
 
     always @(posedge clk) begin
         if (rstn && $past(rstn)) begin
@@ -338,6 +440,8 @@ module fir_core_sva #(
             if (cond_ptr_wrap)     cov_ptr_wrap     <= 1'b1;
             if (cond_negative_out) cov_negative_out <= 1'b1;
             if (cond_acc_overflow) cov_acc_overflow <= 1'b1;
+            if (cond_pd_off)       cov_pd_off       <= 1'b1;
+            if (cond_wake_accept)  cov_wake_accept  <= 1'b1;
         end
     end
 
@@ -366,6 +470,11 @@ bind fir_core fir_core_sva #(
     .sample_raddr (sample_raddr),
     .sample_we    (sample_we),
     .mac_en_d1    (mac_en_d1),
+    .acc_en       (acc_en),
     .acc_clear    (acc_clear),
-    .acc_out      (acc_out)
+    .acc_out      (acc_out),
+    .alu_clk_en   (alu_clk_en),
+    .mac_pwr_on   (mac_pwr_on),
+    .mac_iso_en   (mac_iso_en),
+    .mac_pwr_ready(mac_pwr_ready)
 );
