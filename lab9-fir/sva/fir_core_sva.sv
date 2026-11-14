@@ -295,6 +295,9 @@ module fir_core_sva #(
         ($past(rstn) && !output_valid) |-> $stable(filter_out)
     ) else $error("filter_out changed without output_valid");
 
+`ifndef FORMAL
+    // Section 6 uses queues and a 64-term loop; formal tools skip it
+    // (formal/jasper/fir.tcl proves sections 1-5 and 8).
     // -----------------------------------------------------------------------
     // 6. Golden model. Mirrors coefficient writes, keeps the history of
     // accepted samples, and computes
@@ -351,6 +354,8 @@ module fir_core_sva #(
             end
         end
     end
+
+`endif
 
     // -----------------------------------------------------------------------
     // 8. Low power

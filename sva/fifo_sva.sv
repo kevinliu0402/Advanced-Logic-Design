@@ -39,7 +39,11 @@ module fifo_sva #(
     // A temporal SVA property cannot do this by itself: several words can be
     // in flight, and the read that matches a given write happens a variable
     // number of read-clocks later. A queue is the usual model for that.
+`ifndef FORMAL
+    // Formal tools cannot model a queue; sva/fifo_formal.sv proves data
+    // order there with a symbolic tracked word instead.
     logic [DSIZE-1:0] exp_q[$];
+`endif
 
     // Interface rules. These constrain the testbench, not the RTL.
     // `assert` makes a bad driver fail in simulation. Wrap them in
@@ -123,16 +127,21 @@ module fifo_sva #(
 
     always @(posedge clk1 or negedge wrst_n) begin
         if (!wrst_n) begin
+`ifndef FORMAL
             exp_q.delete();
+`endif
             seen_full <= 1'b0;
         end else begin
             if (wfull)
                 seen_full <= 1'b1;
+`ifndef FORMAL
             if (winc && !wfull)
                 exp_q.push_back(wdata);
+`endif
         end
     end
 
+`ifndef FORMAL
     always @(posedge clk2) begin
         if (rrst_n && wrst_n && rinc && !rempty) begin
             a_scoreboard_not_empty: assert (exp_q.size() != 0)
@@ -144,6 +153,7 @@ module fifo_sva #(
             end
         end
     end
+`endif
 
     c_reached_full: cover property (@(posedge clk1) $rose(wfull))
         cov_full = 1'b1;
