@@ -1,0 +1,98 @@
+****************************************
+Report : timing
+	-path_type full
+	-delay_type max
+	-max_paths 1
+	-sort_by slack
+Design : fir_core
+Version: U-2022.12-SP5
+Date   : Fri Nov 13 20:32:27 2026
+****************************************
+
+
+  Startpoint: u_sample_buf/rdata_reg[1]
+               (rising edge-triggered flip-flop clocked by clk)
+  Endpoint: u_fir_alu/product_q_reg[26]
+               (rising edge-triggered flip-flop clocked by clk)
+  Path Group: clk
+  Path Type: max
+
+  Point                                                   Incr       Path
+  ------------------------------------------------------------------------------
+  clock clk (rise edge)                                   0.00       0.00
+  clock network delay (ideal)                             0.80       0.80
+  u_sample_buf/rdata_reg[1]/CP (FD1)                      0.00       0.80 r
+  u_sample_buf/rdata_reg[1]/Q (FD1)                       1.52       2.32 f
+  u_fir_alu/mult_37/U1303/Z2 (B2IP)                       1.09       3.41 f
+  u_fir_alu/mult_37/U1328/Z (ND2I)                        0.39       3.79 r
+  u_fir_alu/mult_37/U1338/Z (IVI)                         0.15       3.94 f
+  u_fir_alu/mult_37/U1339/Z (ND2I)                        0.33       4.27 r
+  u_fir_alu/mult_37/U1340/Z (IVI)                         0.28       4.55 f
+  u_fir_alu/mult_37/U1500/Z (ND2I)                        0.27       4.82 r
+  u_fir_alu/mult_37/U343/Z (AN2I)                         0.36       5.18 r
+  u_fir_alu/mult_37/U345/Z (NR2I)                         0.26       5.44 f
+  u_fir_alu/mult_37/U109/Z (IVDAP)                        0.75       6.19 f
+  u_fir_alu/mult_37/U252/Z (AO5)                          1.61       7.79 r
+  u_fir_alu/mult_37/U1513/Z (ENI)                         0.49       8.28 f
+  u_fir_alu/mult_37/U1514/Z (ENI)                         0.56       8.84 f
+  u_fir_alu/mult_37/U966/Z (AO4P)                         1.35      10.19 r
+  u_fir_alu/mult_37/U1958/Z (IVI)                         0.23      10.42 f
+  u_fir_alu/mult_37/U1959/Z (NR2I)                        0.65      11.07 r
+  u_fir_alu/mult_37/U515/Z (OR2P)                         0.58      11.65 r
+  u_fir_alu/mult_37/U1233/Z (ND2I)                        0.25      11.90 f
+  u_fir_alu/mult_37/U974/Z (OR2I)                         0.67      12.57 f
+  u_fir_alu/mult_37/U975/Z (ND2I)                         0.39      12.95 r
+  u_fir_alu/mult_37/U1961/Z (IVI)                         0.23      13.18 f
+  u_fir_alu/mult_37/U1962/Z (NR2I)                        0.65      13.83 r
+  u_fir_alu/mult_37/U341/Z (OR2P)                         0.58      14.41 r
+  u_fir_alu/mult_37/U342/Z (ND2I)                         0.25      14.66 f
+  u_fir_alu/mult_37/U840/Z (IVI)                          0.33      14.99 r
+  u_fir_alu/mult_37/U842/Z (ND2I)                         0.15      15.14 f
+  u_fir_alu/mult_37/U113/Z (AN2I)                         0.66      15.80 f
+  u_fir_alu/mult_37/U489/Z (ND2I)                         0.31      16.11 r
+  u_fir_alu/mult_37/U1990/Z (ENI)                         0.44      16.55 f
+  u_fir_alu/mult_37/U1991/Z (ENI)                         0.63      17.18 f
+  u_fir_alu/mult_37/U2016/Z (ENI)                         0.51      17.70 f
+  u_fir_alu/mult_37/U2017/Z (ENI)                         0.44      18.14 f
+  u_fir_alu/mult_37/U610/Z (ND2I)                         0.27      18.41 r
+  u_fir_alu/mult_37/U572/Z (IVI)                          0.20      18.61 f
+  u_fir_alu/mult_37/U1283/Z (AO4P)                        1.28      19.89 r
+  u_fir_alu/mult_37/U55/Z (IVDAP)                         0.68      20.57 r
+  u_fir_alu/mult_37/U2036/Z (IVI)                         0.33      20.91 f
+  u_fir_alu/mult_37/U708/Z (AO2P)                         1.18      22.08 r
+  u_fir_alu/mult_37/U517/Z (AO5)                          0.60      22.68 f
+  u_fir_alu/mult_37/U1028/Z (ND2I)                        0.33      23.01 r
+  u_fir_alu/mult_37/U412/Z (OR2I)                         0.59      23.60 r
+  u_fir_alu/mult_37/U413/Z (ND2I)                         0.25      23.86 f
+  u_fir_alu/mult_37/U2181/Z (NR2I)                        0.65      24.50 r
+  u_fir_alu/mult_37/FS_1/U165/Z (IVI)                     0.23      24.73 f
+  u_fir_alu/mult_37/FS_1/U163/Z (ND2I)                    0.45      25.17 r
+  u_fir_alu/mult_37/FS_1/U22/Z (AN3)                      0.96      26.14 r
+  u_fir_alu/mult_37/FS_1/U37/Z (ND2I)                     0.15      26.29 f
+  u_fir_alu/mult_37/FS_1/U131/Z (NR2I)                    0.65      26.93 r
+  u_fir_alu/mult_37/FS_1/U130/Z (ND2I)                    0.15      27.08 f
+  u_fir_alu/mult_37/FS_1/U129/Z (AN2I)                    0.70      27.78 f
+  u_fir_alu/mult_37/FS_1/U29/Z (ND2I)                     0.33      28.11 r
+  u_fir_alu/mult_37/FS_1/U119/Z (ND2I)                    0.15      28.26 f
+  u_fir_alu/mult_37/FS_1/U118/Z (ND2I)                    0.27      28.53 r
+  u_fir_alu/mult_37/FS_1/U113/Z (ENI)                     0.44      28.97 f
+  u_fir_alu/U117/Z (IVI)                                  0.31      29.28 r
+  u_fir_alu/U3/Z (MUX21L)                                 0.47      29.75 f
+  u_fir_alu/product_q_reg[26]/D (FD2)                     0.00      29.75 f
+  data arrival time                                                 29.75
+
+  clock clk (rise edge)                                  30.00      30.00
+  clock network delay (ideal)                             0.80      30.80
+  clock reconvergence pessimism                           0.00      30.80
+  clock uncertainty                                      -0.20      30.60
+  u_fir_alu/product_q_reg[26]/CP (FD2)                              30.60 r
+  library setup time                                     -0.85      29.75
+  data required time                                                29.75
+  ------------------------------------------------------------------------------
+  data required time                                                29.75
+  data arrival time                                                -29.75
+  ------------------------------------------------------------------------------
+  slack (MET)                                                        0.00
+
+
+1

@@ -1,0 +1,111 @@
+****************************************
+Report : timing
+	-path_type full
+	-delay_type max
+	-max_paths 1
+	-sort_by slack
+Design : fir_core
+Version: U-2022.12-SP5
+Date   : Fri Nov 13 20:31:26 2026
+****************************************
+
+
+  Startpoint: u_sample_buf/rdata_reg[1]
+               (rising edge-triggered flip-flop clocked by clk)
+  Endpoint: u_fir_alu/accumulator_reg[31]
+               (rising edge-triggered flip-flop clocked by clk)
+  Path Group: clk
+  Path Type: max
+
+  Point                                                   Incr       Path
+  ------------------------------------------------------------------------------
+  clock clk (rise edge)                                   0.00       0.00
+  clock network delay (ideal)                             0.80       0.80
+  u_sample_buf/rdata_reg[1]/CP (FD1)                      0.00       0.80 r
+  u_sample_buf/rdata_reg[1]/Q (FD1)                       1.52       2.32 f
+  u_fir_alu/mult_39/U355/Z2 (B2IP)                        0.97       3.29 f
+  u_fir_alu/mult_39/U766/Z (ND2I)                         0.33       3.62 r
+  u_fir_alu/mult_39/U1248/Z (IVI)                         0.23       3.85 f
+  u_fir_alu/mult_39/U1843/Z (ND2I)                        0.33       4.18 r
+  u_fir_alu/mult_39/U1211/Z (ENI)                         0.44       4.62 f
+  u_fir_alu/mult_39/U1120/Z (ENI)                         0.38       5.00 r
+  u_fir_alu/mult_39/U973/Z (IVI)                          0.30       5.30 f
+  u_fir_alu/mult_39/U1210/Z (AO5P)                        1.50       6.80 r
+  u_fir_alu/mult_39/U579/Z (ENI)                          0.58       7.38 f
+  u_fir_alu/mult_39/U468/Z (ENI)                          0.49       7.87 f
+  u_fir_alu/mult_39/U2516/Z (AO5P)                        1.30       9.17 r
+  u_fir_alu/mult_39/U2743/Z (ENI)                         0.51       9.69 f
+  u_fir_alu/mult_39/U535/Z (ENI)                          0.56      10.24 f
+  u_fir_alu/mult_39/U331/Z (AO5)                          1.61      11.85 r
+  u_fir_alu/mult_39/U274/Z (ENI)                          0.44      12.30 f
+  u_fir_alu/mult_39/U1650/Z (ENI)                         0.65      12.95 f
+  u_fir_alu/mult_39/U1722/Z (AO5P)                        1.30      14.24 r
+  u_fir_alu/mult_39/U1520/Z (IVI)                         0.23      14.47 f
+  u_fir_alu/mult_39/U1522/Z (ND2I)                        0.37      14.84 r
+  u_fir_alu/mult_39/U1736/Z (ND4P)                        0.67      15.51 f
+  u_fir_alu/mult_39/U329/Z (AN2I)                         0.66      16.16 f
+  u_fir_alu/mult_39/U718/Z (ND2I)                         0.31      16.47 r
+  u_fir_alu/mult_39/U809/Z (AO5P)                         0.50      16.97 f
+  u_fir_alu/mult_39/U889/Z (IVI)                          0.33      17.30 r
+  u_fir_alu/mult_39/U2693/Z (ND2I)                        0.25      17.56 f
+  u_fir_alu/mult_39/U616/Z (AN2I)                         0.66      18.21 f
+  u_fir_alu/mult_39/U1072/Z (ND2I)                        0.27      18.48 r
+  u_fir_alu/mult_39/U835/Z (ND2I)                         0.15      18.63 f
+  u_fir_alu/mult_39/U269/Z (NR2I)                         0.65      19.28 r
+  u_fir_alu/mult_39/U256/Z (AN2I)                         0.36      19.64 r
+  u_fir_alu/mult_39/U365/Z (NR2I)                         0.22      19.86 f
+  u_fir_alu/mult_39/FS_1/U26/Z (IVI)                      0.33      20.20 r
+  u_fir_alu/mult_39/FS_1/U28/Z (IVI)                      0.20      20.39 f
+  u_fir_alu/mult_39/FS_1/U15/Z (AO3P)                     0.75      21.14 r
+  u_fir_alu/mult_39/FS_1/U25/Z (ND2I)                     0.25      21.39 f
+  u_fir_alu/mult_39/FS_1/U122/Z (ND2I)                    0.33      21.72 r
+  u_fir_alu/mult_39/FS_1/U121/Z (ND2I)                    0.15      21.87 f
+  u_fir_alu/mult_39/FS_1/U114/Z (ND2I)                    0.33      22.20 r
+  u_fir_alu/mult_39/FS_1/U113/Z (ND2I)                    0.15      22.35 f
+  u_fir_alu/mult_39/FS_1/U106/Z (ND2I)                    0.27      22.62 r
+  u_fir_alu/mult_39/FS_1/U130/Z (ND2I)                    0.25      22.88 f
+  u_fir_alu/mult_39/FS_1/U99/Z (ND2I)                     0.33      23.20 r
+  u_fir_alu/mult_39/FS_1/U11/Z (ND2I)                     0.15      23.36 f
+  u_fir_alu/mult_39/FS_1/U92/Z (ND2I)                     0.27      23.63 r
+  u_fir_alu/mult_39/FS_1/U9/Z (ND2I)                      0.25      23.88 f
+  u_fir_alu/mult_39/FS_1/U86/Z (ND2I)                     0.33      24.21 r
+  u_fir_alu/mult_39/FS_1/U85/Z (ND2I)                     0.15      24.36 f
+  u_fir_alu/mult_39/FS_1/U78/Z (ND2I)                     0.33      24.69 r
+  u_fir_alu/mult_39/FS_1/U77/Z (ND2I)                     0.15      24.84 f
+  u_fir_alu/mult_39/FS_1/U70/Z (ND2I)                     0.33      25.17 r
+  u_fir_alu/mult_39/FS_1/U69/Z (ND2I)                     0.15      25.32 f
+  u_fir_alu/mult_39/FS_1/U62/Z (ND2I)                     0.33      25.65 r
+  u_fir_alu/mult_39/FS_1/U118/Z (ND2I)                    0.15      25.80 f
+  u_fir_alu/mult_39/FS_1/U56/Z (ND2I)                     0.33      26.13 r
+  u_fir_alu/mult_39/FS_1/U55/Z (ND2I)                     0.15      26.28 f
+  u_fir_alu/mult_39/FS_1/U48/Z (ND2I)                     0.27      26.55 r
+  u_fir_alu/mult_39/FS_1/U47/Z (ND2I)                     0.25      26.80 f
+  u_fir_alu/mult_39/FS_1/U41/Z (ENI)                      0.58      27.39 f
+  u_fir_alu/add_53/U67/Z (IVI)                            0.33      27.72 r
+  u_fir_alu/add_53/U65/Z (ND2I)                           0.15      27.87 f
+  u_fir_alu/add_53/U58/Z (ND2I)                           0.27      28.14 r
+  u_fir_alu/add_53/U12/Z (ND2I)                           0.15      28.29 f
+  u_fir_alu/add_53/U13/Z (IVI)                            0.33      28.62 r
+  u_fir_alu/add_53/U50/Z (ND2I)                           0.15      28.77 f
+  u_fir_alu/add_53/U43/Z (ND2I)                           0.27      29.04 r
+  u_fir_alu/add_53/U42/Z (ND2I)                           0.15      29.20 f
+  u_fir_alu/add_53/U40/Z (ENI)                            0.38      29.57 r
+  u_fir_alu/U26/Z (EON1P)                                 1.25      30.82 r
+  u_fir_alu/accumulator_reg[31]/D (FD2)                   0.00      30.82 r
+  data arrival time                                                 30.82
+
+  clock clk (rise edge)                                  30.00      30.00
+  clock network delay (ideal)                             0.80      30.80
+  clock reconvergence pessimism                           0.00      30.80
+  clock uncertainty                                      -0.20      30.60
+  u_fir_alu/accumulator_reg[31]/CP (FD2)                            30.60 r
+  library setup time                                     -0.85      29.75
+  data required time                                                29.75
+  ------------------------------------------------------------------------------
+  data required time                                                29.75
+  data arrival time                                                -30.82
+  ------------------------------------------------------------------------------
+  slack (VIOLATED)                                                  -1.07
+
+
+1

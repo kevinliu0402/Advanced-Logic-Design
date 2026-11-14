@@ -1,0 +1,34 @@
+==============================================================
+  FIR Filter Core - Timing & Power Executive Summary
+==============================================================
+  Design: fir_core
+  Date: 2026-11-13 20:31:27
+==============================================================
+
+TIMING ANALYSIS:
+----------------
+  Setup Time: VIOLATED
+  Slack: -1.067 ns
+  Target Frequency: 33.33 MHz
+  ACTION REQUIRED: Reduce clock frequency or optimize design
+
+POWER ANALYSIS:
+---------------
+  Total Power:   0.000051 W (0.051 mW)
+  Dynamic Power: 0.000051 W (0.051 mW)
+  Leakage Power: 0.000000 W (0.000 mW)
+
+AREA:
+-----
+  Total Cell Area: 33825.00 um^2
+
+PERFORMANCE METRICS:
+--------------------
+  Cycles per Sample: 68
+  Energy per Sample: 1.037e-10 J (103.71 pJ)
+  Max Throughput: 0.49 MSamples/sec
+  Power Efficiency: 9642.34 MSamples/sec/mW
+
+==============================================================
+                    End of Summary Report
+==============================================================
